@@ -1,20 +1,23 @@
 package com.example.demo
 
+import com.example.demo.configs.GraphhopperApiConfig
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.databind.PropertyNamingStrategy
 import com.fasterxml.jackson.databind.annotation.JsonNaming
-import org.springframework.http.HttpEntity
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
 
 @Service
+@ConditionalOnProperty(prefix = "graphopper", name = ["enabled"], havingValue = "true")
 class GeocodeApi(
     private val restTemplate: RestTemplate,
+    private val graphopperApiConfig: GraphhopperApiConfig,
+    private val geocodeApiFeign: GeocodeApiFeign,
+    private val restSpringInterfaceGraphhopper: RestSpringInterfaceGraphhopper
 ) {
-    private var API_URL = "https://graphhopper.com"
     private var ROUTE_URL = "/api/1/route?key="
-    private val API_TOKEN = "0028f46d-7d01-4395-8097-974f036d5a32"
 
     @JsonNaming(
         PropertyNamingStrategy.SnakeCaseStrategy::class,
@@ -112,32 +115,64 @@ class GeocodeApi(
         from: Pair<Double, Double>,
         to: Pair<Double, Double>,
     ) {
+//        val request =
+//            HttpEntity<RequestToApi>(
+//                RequestToApi(
+//                    points =
+//                        listOf(
+//                            listOf(from.first, from.second),
+//                            listOf(to.first, to.second),
+//                        ),
+//                    snapPreventions =
+//                        listOf(
+//                            "motorway",
+//                            "ferry",
+//                            "tunnel",
+//                        ),
+//                    details =
+//                        listOf(
+//                            "road_class",
+//                            "surface",
+//                        ),
+//                    profile = "car",
+//                ),
+//            )
         val request =
-            HttpEntity<RequestToApi>(
-                RequestToApi(
-                    points =
-                        listOf(
-                            listOf(from.first, from.second),
-                            listOf(to.first, to.second),
-                        ),
-                    snapPreventions =
-                        listOf(
-                            "motorway",
-                            "ferry",
-                            "tunnel",
-                        ),
+            RequestToApi(
+                points =
+                    listOf(
+                        listOf(from.first, from.second),
+                        listOf(to.first, to.second),
+                    ),
+                snapPreventions =
+                    listOf(
+                        "motorway",
+                        "ferry",
+                        "tunnel",
+            ),
                     details =
-                        listOf(
-                            "road_class",
-                            "surface",
-                        ),
-                    profile = "car",
-                ),
+                    listOf(
+                        "road_class",
+                        "surface",
+                    ),
+                profile = "car",
             )
-        val response =
-            restTemplate
-                .postForObject("$API_URL$ROUTE_URL$API_TOKEN", request, GraphHopperResponse::class.java)
 
-        println(response?.paths?.get(0)?.time!! / (60 * 60 * 60))
+        val uri =
+            """
+            ${graphopperApiConfig.url}$ROUTE_URL${graphopperApiConfig.token}
+            """.trimIndent()
+//        val response =
+//            restTemplate.postForObject(uri, request, GraphHopperResponse::class.java)
+
+        val response = restSpringInterfaceGraphhopper.findRoute(request)
+
+        println(response)
+
+        if (graphopperApiConfig.showTime) {
+            println(response?.paths?.get(0)?.time!! / (60 * 60 * 60))
+        }
+
+        println("Max threads count: ${graphopperApiConfig.maxThreadsCount}")
     }
 }

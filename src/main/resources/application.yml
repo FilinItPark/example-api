@@ -1,4 +1,23 @@
 logging:
   level:
     root: info
-    org.springframework.web.client.RestTemplate: trace
+    org.springframework.web.client:
+      RestTemplate: trace
+      DefaultResponseErrorHandler: trace
+
+
+graphopper:
+  url: "https://graphhopper.com"
+  token: "0028f46d-7d01-4395-8097-974f036d5a32"
+  max-threads-count: 2
+  show-time: true
+spring:
+  cloud:
+    openfeign:
+      client:
+        config:
+          graphopper-service:
+            url: https://graphhopper.com
+            logger-level: FULL
+            connect-timeout: 15000
+            read-timeout: 15000
